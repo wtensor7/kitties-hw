@@ -1,3 +1,4 @@
+import ExtrinsicUnknown from '@polkadot/types/extrinsic/ExtrinsicUnknown';
 import React from 'react';
 import { Button, Card, Grid, Message, Modal, Form, Label } from 'semantic-ui-react';
 
@@ -13,6 +14,7 @@ const TransferModal = props => {
 
   const formChange = key => (ev, el) => {
     /* TODO: 加代码 */
+    setFormValue(prev => ({...prev, [key]: el.value}));
   };
 
   const confirmAndClose = (unsub) => {
@@ -44,6 +46,30 @@ const TransferModal = props => {
 };
 
 // --- About Kitty Card ---
+function stringToByte(str) {
+  const bytes = [];
+  let len, c;
+  len = str.length;
+  for(var i = 0; i < len; i++) {
+      c = str.charCodeAt(i);
+      if(c >= 0x010000 && c <= 0x10FFFF) {
+          bytes.push(((c >> 18) & 0x07) | 0xF0);
+          bytes.push(((c >> 12) & 0x3F) | 0x80);
+          bytes.push(((c >> 6) & 0x3F) | 0x80);
+          bytes.push((c & 0x3F) | 0x80);
+      } else if(c >= 0x000800 && c <= 0x00FFFF) {
+          bytes.push(((c >> 12) & 0x0F) | 0xE0);
+          bytes.push(((c >> 6) & 0x3F) | 0x80);
+          bytes.push((c & 0x3F) | 0x80);
+      } else if(c >= 0x000080 && c <= 0x0007FF) {
+          bytes.push(((c >> 6) & 0x1F) | 0xC0);
+          bytes.push((c & 0x3F) | 0x80);
+      } else {
+          bytes.push(c & 0xFF);
+      }
+  }
+  return bytes;
+}
 
 const KittyCard = props => {
   /*
@@ -53,14 +79,40 @@ const KittyCard = props => {
     <TransferModal kitty={kitty} accountPair={accountPair} setStatus={setStatus}/> - 来作转让的弹出层
     ```
   */
-  return null;
+  const { kitty, owner, price, accountPair, setStatus } = props;
+  const { dna } = kitty;
+  const dna_str = dna.toString();
+  const dna_arr = stringToByte(dna_str.slice(2, dna_str.length));
+  const owner_str = "" + owner;
+
+  let is_owner = accountPair.address === owner_str;
+
+  return (
+    <Grid.Column width={4}>
+      <Card.Content>
+        <Card.Header>{kitty.id}</Card.Header>
+        <KittyAvatar dna={dna_arr} />
+        {/* 只有属于自己的kitty才能转让给其它人 */}
+        {
+          is_owner ? <TransferModal kitty={kitty} is_owner={is_owner} accountPair={accountPair} setStatus={setStatus}/> : null
+        }
+        <Card.Description>
+          {1}
+        </Card.Description>
+      </Card.Content>
+    </Grid.Column>
+  );
 };
 
 const KittyCards = props => {
-  const { kitties, accountPair, setStatus } = props;
+  const { kitties, accountPair,kittyOwners, kittyPrices,setStatus } = props;
 
   /* TODO: 加代码。这里会枚举所有的 `KittyCard` */
-  return null;
+  return (
+    <Grid>
+      {kitties.map((kitty, index) => <KittyCard key={index} kitty={kitty} owner={kittyOwners[index]} price={kittyPrices[index]} accountPair={accountPair} setStatus={setStatus}/>)}
+    </Grid>
+  );
 };
 
 export default KittyCards;
